@@ -3,6 +3,11 @@ const moment = require('moment');
 const Response = require('../lib/Response');
 const AuditLogs = require('../db/models/AuditLogs');
 const router = express.Router();
+const auth = require('../lib/auth')();
+
+router.all('*', auth.authenticate(), (req, res, next) => {
+  next();
+});
 
 /* GET users listing. */
 router.post('/', async (req, res) => {
@@ -33,7 +38,7 @@ router.post('/', async (req, res) => {
       }
     }
 
-    let auditLogs = await AuditLogs.find(query).sort({created_at: -1}).skip(skip).limit(limit);
+    let auditLogs = await AuditLogs.find(query).sort({ created_at: -1 }).skip(skip).limit(limit);
 
     res.json(Response.successResponse(auditLogs));
 

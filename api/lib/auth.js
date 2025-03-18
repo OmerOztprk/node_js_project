@@ -4,6 +4,7 @@ const Users = require('../db/models/Users');
 const UserRoles = require('../db/models/UserRoles');
 const RolePrivileges = require('../db/models/RolePrivileges');
 
+const privs = require('../config/role_privileges');
 const config = require('../config');
 
 module.exports = function () {
@@ -12,9 +13,6 @@ module.exports = function () {
         jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken()
     }, async (payload, done) => {
         try {
-
-
-
             let user = await Users.findOne({ _id: payload.id });
 
             if (user) {
