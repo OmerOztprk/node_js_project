@@ -19,18 +19,10 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-
-app.use((err, req, res, next) => {
-  console.error("Hata ayrıntıları:", err);
-  res.status(500).json({ error: "Internal Server Error", details: err.message });
-});
 app.use((req, res, next) => {
   console.log("middleware");
   next();
 });
-
-
-
 
 app.use('/api', require('./routes/index'));
 

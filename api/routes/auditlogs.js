@@ -37,8 +37,6 @@ router.post("/", auth.checkRoles("auditlogs_view"), async (req, res) => {
             }
         }
 
-
-
         let auditLogs = await AuditLogs.find(query).sort({ created_at: -1 }).skip(skip).limit(limit);
 
         res.json(Response.successResponse(auditLogs));
