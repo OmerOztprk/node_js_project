@@ -1,17 +1,17 @@
 var express = require('express');
-const bcrypt = require('bcrypt-nodejs');
-const is = require("is_js")
-const jwt = require('jwt-simple');
+const bcrypt = require("bcrypt-nodejs");
+const is = require("is_js");
+const jwt = require("jwt-simple");
 
 const Users = require('../db/models/Users');
-const Response = require('../lib/Response');
-const CustomError = require("../lib/Error");
-const Enum = require("../config/Enum");
+const Response = require("../lib/Response");
+const CustomError = require('../lib/Error');
+const Enum = require('../config/Enum');
 const UserRoles = require('../db/models/UserRoles');
 const Roles = require('../db/models/Roles');
 const config = require('../config');
 var router = express.Router();
-const auth = require('../lib/auth')();
+const auth = require("../lib/auth")();
 const i18n = new (require("../lib/i18n"))(config.DEFAULT_LANG);
 
 router.post("/register", async (req, res) => {
@@ -74,7 +74,7 @@ router.post("/auth", async (req, res) => {
 
     let user = await Users.findOne({ email });
 
-    if (!user) throw new CustomError(Enum.HTTP_CODES.UNAUTHORIZED, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", config.DEFAULT_LANG), i18n.translate("USERS.AUTH_ERROR", config.DEFAULT_LANG));
+    if (!user) throw new CustomError(Enum.HTTP_CODES.UNAUTHORIZED, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", config.DEFAULT_LANG,), i18n.translate("USERS.AUTH_ERROR", config.DEFAULT_LANG,));
 
     if (!user.validPassword(password)) throw new CustomError(Enum.HTTP_CODES.UNAUTHORIZED, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", config.DEFAULT_LANG), i18n.translate("USERS.AUTH_ERROR", config.DEFAULT_LANG));
 
@@ -86,7 +86,7 @@ router.post("/auth", async (req, res) => {
     let token = jwt.encode(payload, config.JWT.SECRET);
 
     let userData = {
-      id: user._id,
+      _id: user._id,
       first_name: user.first_name,
       last_name: user.last_name
     }
@@ -116,7 +116,7 @@ router.get('/', auth.checkRoles("user_view"), async (req, res) => {
   }
 });
 
-router.post("/add", auth.checkRoles("user_add"), async (req, res) => {
+router.post("/add"/*, auth.checkRoles("user_add")*/, async (req, res) => {
   let body = req.body;
   try {
 

@@ -15,7 +15,7 @@ router.all('*', auth.authenticate(), (req, res, next) => {
   next();
 });
 
-router.get("/", auth.checkRoles("role_view"), async (req, res) => {
+router.get("/", /*auth.checkRoles("role_view"),*/ async (req, res) => {
     try {
         let roles = await Roles.find({});
 
@@ -26,7 +26,7 @@ router.get("/", auth.checkRoles("role_view"), async (req, res) => {
     }
 });
 
-router.post("/add", auth.checkRoles("role_add"), async (req, res) => {
+router.post("/add", /*auth.checkRoles("role_add"),*/ async (req, res) => {
     let body = req.body;
 
     try {
