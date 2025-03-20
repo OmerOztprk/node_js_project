@@ -13,6 +13,20 @@ const config = require('../config');
 var router = express.Router();
 const auth = require("../lib/auth")();
 const i18n = new (require("../lib/i18n"))(config.DEFAULT_LANG);
+const { rateLimit } = require("express-rate-limit");
+const RateLimitMongo = require("rate-limit-mongo");
+
+const limiter = rateLimit({
+  store: new RateLimitMongo({
+    uri: config.CONNECTION_STRING,
+    collectionName: "rateLimits",
+    expireTimeMs: 15 * 60 * 1000 // 15 minutes
+  }),
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 5, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
+  // standardHeaders: 'draft-7', // draft-6: `RateLimit-*` headers; draft-7: combined `RateLimit` header
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
+});
 
 router.post("/register", async (req, res) => {
 
@@ -65,7 +79,7 @@ router.post("/register", async (req, res) => {
   }
 })
 
-router.post("/auth", async (req, res) => {
+router.post("/auth", limiter, async (req, res) => {
   try {
 
     let { email, password } = req.body;
