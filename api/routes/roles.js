@@ -72,7 +72,11 @@ router.post("/update", auth.checkRoles("role_update"), async (req, res) => {
     try {
         if (!body._id) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, ["_id"]));
 
-        let updates = {};
+        let userRole = await UserRoles.findOne({user_id: req.user.id, role_id: body._id});
+
+        if (userRole) {
+            throw new CustomError(Enum.HTTP_CODES.FORBIDDEN, i18n.translate("COMMON.NEED_PERMISSIONS", req.user.language),i18n.translate("COMMON.NEED_PERMISSIONS", req.user.language));
+        }
 
         if (body.role_name) updates.role_name = body.role_name;
         if (typeof body.is_active === "boolean") updates.is_active = body.is_active;
