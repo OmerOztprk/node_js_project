@@ -69,7 +69,7 @@ router.post("/users/count", async (req, res) => {
 
         if (typeof body.is_active === "boolean") filter.is_active = body.is_active;
 
-        let result = await Users.count(filter);
+        let result = await Users.countDocuments(filter);
 
         res.json(Response.successResponse(result));
 
