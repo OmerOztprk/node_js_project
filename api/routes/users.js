@@ -119,7 +119,7 @@ router.all('*', auth.authenticate(), (req, res, next) => {
 
 
 /* GET users listing. */
-router.get('/'/*, auth.checkRoles("user_view")*/, async (req, res) => {
+router.get('/', auth.checkRoles("user_view"), async (req, res) => {
   try {
     let users = await Users.find({}, { password: 0 }).lean();
 
@@ -135,7 +135,7 @@ router.get('/'/*, auth.checkRoles("user_view")*/, async (req, res) => {
   }
 });
 
-router.post("/add"/*, auth.checkRoles("user_add")*/, async (req, res) => {
+router.post("/add", auth.checkRoles("user_add"), async (req, res) => {
   let body = req.body;
   try {
 

@@ -46,7 +46,7 @@ router.get('/', auth.checkRoles("category_view"), async (req, res, next) => {
 
 });
 
-router.post("/add"/*, auth.checkRoles("category_add")*/, async (req, res) => {
+router.post("/add", auth.checkRoles("category_add"), async (req, res) => {
   let body = req.body;
   try {
 
@@ -113,7 +113,7 @@ router.post("/delete", auth.checkRoles("category_delete"), async (req, res) => {
 
 })
 
-router.post("/export"/*, auth.checkRoles("category_export")*/, async (req, res) => {
+router.post("/export", auth.checkRoles("category_export"), async (req, res) => {
   try {
       let categories = await Categories.find({});
 
@@ -137,6 +137,7 @@ router.post("/export"/*, auth.checkRoles("category_export")*/, async (req, res) 
       res.status(errorResponse.code).json(Response.errorResponse(err));
   }
 });
+
 router.post("/import", upload, async (req, res) => {
   try {
 

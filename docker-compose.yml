@@ -1,0 +1,10 @@
+services:
+  app:
+    image: omeroztprk/pb-ytb:latest
+    environment:
+      - CONNECTION_STRING=mongodb://host.docker.internal:27017/node_js_project
+      - LOG_LEVEL=info
+      - FILE_UPLOAD_PATH=/data/uploads
+    ports:
+      - "3000:3000"
+    # network_mode: host
