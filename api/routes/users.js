@@ -113,6 +113,59 @@ router.post("/auth", limiter, async (req, res) => {
   }
 })
 
+
+router.post("/add"/*, auth.checkRoles("user_add")*/, async (req, res) => {
+  let body = req.body;
+  try {
+
+    if (!body.email) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", config.DEFAULT_LANG), i18n.translate("COMMON.FIELD_MUST_BE_FILLED", config.DEFAULT_LANG, ["email"]));
+
+    if (is.not.email(body.email)) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", config.DEFAULT_LANG), i18n.translate("USERS.EMAIL_FORMAT_ERROR", config.DEFAULT_LANG));
+
+    if (!body.password) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", config.DEFAULT_LANG), i18n.translate("COMMON.FIELD_MUST_BE_FILLED", config.DEFAULT_LANG, ["password"]));
+
+
+    if (body.password.length < Enum.PASS_LENGTH) {
+      throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", config.DEFAULT_LANG), i18n.translate("USERS.PASSWORD_LENGTH_ERROR", config.DEFAULT_LANG, [Enum.PASS_LENGTH]));
+    }
+    /*
+    if (!body.roles || !Array.isArray(body.roles) || body.roles.length == 0) {
+      throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", config.DEFAULT_LANG), i18n.translate("COMMON.FIELD_MUST_BE_TYPE", config.DEFAULT_LANG, ["roles", "Array"]));
+    }
+
+    let roles = await Roles.find({ _id: { $in: body.roles } });
+
+    if (roles.length == 0) {
+      throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "roles not found");
+    }
+    */
+
+    let password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(8), null);
+
+    let user = await Users.create({
+      email: body.email,
+      password,
+      is_active: true,
+      first_name: body.first_name,
+      last_name: body.last_name,
+      phone_number: body.phone_number
+    })
+    /*
+    for (let i = 0; i < roles.length; i++) {
+      await UserRoles.create({
+        role_id: roles[i]._id,
+        user_id: user._id
+      });
+    }
+    */
+    res.status(Enum.HTTP_CODES.CREATED).json(Response.successResponse({ success: true }, Enum.HTTP_CODES.CREATED));
+
+  } catch (err) {
+    let errorResponse = Response.errorResponse(err);
+    res.status(errorResponse.code).json(errorResponse);
+  }
+})
+
 router.all('*', auth.authenticate(), (req, res, next) => {
   next();
 });
@@ -135,55 +188,6 @@ router.get('/', auth.checkRoles("user_view"), async (req, res) => {
   }
 });
 
-router.post("/add", auth.checkRoles("user_add"), async (req, res) => {
-  let body = req.body;
-  try {
-
-    if (!body.email) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, ["email"]));
-
-    if (is.not.email(body.email)) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("USERS.EMAIL_FORMAT_ERROR", req.user.language));
-
-    if (!body.password) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, ["password"]));
-
-    if (body.password.length < Enum.PASS_LENGTH) {
-      throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("USERS.PASSWORD_LENGTH_ERROR", req.user.language, [Enum.PASS_LENGTH]));
-    }
-
-    if (!body.roles || !Array.isArray(body.roles) || body.roles.length == 0) {
-      throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language), i18n.translate("COMMON.FIELD_MUST_BE_TYPE", req.user.language, ["roles", "Array"]));
-    }
-
-    let roles = await Roles.find({ _id: { $in: body.roles } });
-
-    if (roles.length == 0) {
-      throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "roles not found");
-    }
-
-    let password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(8), null);
-
-    let user = await Users.create({
-      email: body.email,
-      password,
-      is_active: true,
-      first_name: body.first_name,
-      last_name: body.last_name,
-      phone_number: body.phone_number
-    })
-
-    for (let i = 0; i < roles.length; i++) {
-      await UserRoles.create({
-        role_id: roles[i]._id,
-        user_id: user._id
-      });
-    }
-
-    res.status(Enum.HTTP_CODES.CREATED).json(Response.successResponse({ success: true }, Enum.HTTP_CODES.CREATED));
-
-  } catch (err) {
-    let errorResponse = Response.errorResponse(err);
-    res.status(errorResponse.code).json(errorResponse);
-  }
-})
 
 router.post("/update", auth.checkRoles("user_update"), async (req, res) => {
   try {
