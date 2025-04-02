@@ -276,12 +276,22 @@ export class DashboardComponent implements OnInit {
 
   editUser(user: User): void {
     this.isEditMode = true;
-    this.currentUser = { ...user };
-    delete this.currentUser.password; // Şifreyi temizle
+    // Kullanıcı verisinin derin bir kopyasını oluştur
+    this.currentUser = { 
+      _id: user._id,
+      email: user.email,
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      phone_number: user.phone_number || '',
+      is_active: user.is_active
+    };
     
     // Kullanıcının rollerini seç
-    this.selectedRoles = user.roles ? user.roles.map(r => r.role_id._id) : [];
+    this.selectedRoles = user.roles ? user.roles.map(r => r.role_id._id.toString()) : [];
     this.showUserModal = true;
+    
+    console.log('Düzenlenecek kullanıcı:', this.currentUser);
+    console.log('Seçilen roller:', this.selectedRoles);
   }
 
   deleteUser(user: User): void {
@@ -291,6 +301,8 @@ export class DashboardComponent implements OnInit {
 
   closeUserModal(): void {
     this.showUserModal = false;
+    this.currentUser = this.getEmptyUser();
+    this.selectedRoles = [];
   }
 
   closeDeleteModal(): void {
@@ -322,7 +334,7 @@ export class DashboardComponent implements OnInit {
   }
 
   saveUser(): void {
-    // Veri doğrulama
+    // Veri doğrulama ve temizleme
     if (!this.currentUser.email) {
       alert('E-posta adresi zorunludur');
       return;
@@ -338,16 +350,25 @@ export class DashboardComponent implements OnInit {
       return;
     }
     
+    // Rol listesini kontrol et - güvenli bir diziye kopyala
+    const validRoles = this.selectedRoles.filter(role => role && typeof role === 'string' && role.length > 0);
+    
+    if (validRoles.length === 0) {
+      alert('Geçerli roller seçilmelidir');
+      return;
+    }
+    
     // Kullanıcı verilerini hazırla
     const userData = {
       ...this.currentUser,
-      roles: [...this.selectedRoles] // Rol dizisini doğru şekilde gönder
+      roles: validRoles // Temizlenmiş rol dizisi
     };
     
     console.log('Gönderilecek kullanıcı verisi:', userData);
 
     // API çağrısı yap
     if (this.isEditMode) {
+      // Güncelleme işlemi
       this.http.post<any>('http://localhost:3000/api/users/update', userData)
         .subscribe({
           next: (response) => {
@@ -357,22 +378,47 @@ export class DashboardComponent implements OnInit {
           },
           error: (error) => {
             console.error('Kullanıcı güncellenirken hata oluştu:', error);
-            alert('Kullanıcı güncellenirken bir hata oluştu: ' + (error.error?.message || 'Bilinmeyen hata'));
+            
+            // Hata mesajını anlamlı hale getir
+            let errorMessage = 'Bilinmeyen hata';
+            
+            if (error.error?.message) {
+              errorMessage = error.error.message;
+            } else if (typeof error.error === 'string') {
+              // HTML formatındaki hatayı temizle
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = error.error;
+              errorMessage = tempDiv.textContent || tempDiv.innerText || error.error;
+            }
+            
+            alert('Kullanıcı güncellenirken bir hata oluştu: ' + errorMessage);
           }
         });
     } else {
+      // Ekleme işlemi
       this.http.post<any>('http://localhost:3000/api/users/add', userData)
         .subscribe({
           next: (response) => {
             console.log('Kullanıcı eklendi:', response);
             this.closeUserModal();
             this.loadUsers();
-            this.loadStats(); // İstatistikleri yenile
+            this.loadStats(); 
           },
           error: (error) => {
             console.error('Kullanıcı eklenirken hata oluştu:', error);
-            const errorMessage = error.error?.message || 
-                                (typeof error.error === 'string' ? error.error : 'Bilinmeyen hata');
+            
+            // Hata mesajını anlamlı hale getir
+            let errorMessage = 'Bilinmeyen hata';
+            
+            if (error.error?.message) {
+              errorMessage = error.error.message;
+            } else if (typeof error.error === 'string') {
+              // HTML formatındaki hatayı temizle
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = error.error;
+              errorMessage = tempDiv.textContent || tempDiv.innerText || error.error;
+            }
+            
             alert('Kullanıcı eklenirken bir hata oluştu: ' + errorMessage);
           }
         });
