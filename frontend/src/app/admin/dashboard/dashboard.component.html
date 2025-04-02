@@ -1,3 +1,234 @@
-<h2>Admin Dashboard</h2>
-<p>Welcome to the admin dashboard!</p>
-<button (click)="logout()">Çıkış Yap</button>
+<!-- Ana container -->
+<div class="dashboard-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="brand">
+        <h2>Admin Panel</h2>
+      </div>
+      <div class="user-info">
+        <div class="avatar">{{ getUserInitials() }}</div>
+        <div class="user-details">
+          <div class="user-name">{{ userData?.first_name }} {{ userData?.last_name }}</div>
+          <div class="user-email">{{ userData?.email }}</div>
+        </div>
+      </div>
+      <ul class="nav-menu">
+        <li [class.active]="currentSection === 'dashboard'" (click)="navigateTo('dashboard')">
+          <span class="icon">🏠</span>
+          <span class="label">Ana Sayfa</span>
+        </li>
+        <li [class.active]="currentSection === 'users'" (click)="navigateTo('users')">
+          <span class="icon">👥</span>
+          <span class="label">Kullanıcılar</span>
+        </li>
+        <li [class.active]="currentSection === 'roles'" (click)="navigateTo('roles')">
+          <span class="icon">🔑</span>
+          <span class="label">Roller</span>
+        </li>
+        <li [class.active]="currentSection === 'categories'" (click)="navigateTo('categories')">
+          <span class="icon">📁</span>
+          <span class="label">Kategoriler</span>
+        </li>
+        <li [class.active]="currentSection === 'logs'" (click)="navigateTo('logs')">
+          <span class="icon">📊</span>
+          <span class="label">Log Kayıtları</span>
+        </li>
+        <li class="logout" (click)="logout()">
+          <span class="icon">🚪</span>
+          <span class="label">Çıkış Yap</span>
+        </li>
+      </ul>
+    </div>
+  
+    <!-- Ana içerik -->
+    <div class="content">
+      <div class="content-header">
+        <h1>{{ getSectionTitle() }}</h1>
+      </div>
+  
+      <!-- Dashboard ana ekranı -->
+      <div *ngIf="currentSection === 'dashboard'" class="section-content">
+        <div class="stats-container">
+          <div class="stat-card">
+            <div class="stat-icon users">👥</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.users }}</div>
+              <div class="stat-label">Kullanıcı</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon categories">📁</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.categories }}</div>
+              <div class="stat-label">Kategori</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon roles">🔑</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.roles }}</div>
+              <div class="stat-label">Rol</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon logs">📊</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.logs }}</div>
+              <div class="stat-label">Log Kaydı</div>
+            </div>
+          </div>
+        </div>
+  
+        <div class="recent-activity">
+          <h3>Son Aktiviteler</h3>
+          <div class="activity-list">
+            <div *ngFor="let log of recentLogs" class="activity-item">
+              <div class="activity-icon" [ngClass]="log.level.toLowerCase()">
+                {{ getActivityIcon(log.level) }}
+              </div>
+              <div class="activity-details">
+                <div class="activity-header">
+                  <span class="activity-user">{{ log.email }}</span>
+                  <span class="activity-time">{{ formatDate(log.created_at) }}</span>
+                </div>
+                <div class="activity-description">
+                  <strong>{{ log.location }}</strong> - {{ log.proc_type }}
+                </div>
+              </div>
+            </div>
+            <div *ngIf="recentLogs.length === 0" class="empty-activity">
+              Henüz aktivite kaydı bulunmuyor.
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Kullanıcı yönetimi bölümü -->
+      <div *ngIf="currentSection === 'users'" class="section-content">
+        <div class="action-bar">
+          <button class="btn primary" (click)="openUserModal()">Yeni Kullanıcı Ekle</button>
+          <div class="search-box">
+            <input type="text" [(ngModel)]="userSearchTerm" placeholder="Kullanıcı ara..." (keyup)="filterUsers()">
+          </div>
+        </div>
+      
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Ad Soyad</th>
+                <th>E-posta</th>
+                <th>Telefon</th>
+                <th>Roller</th>
+                <th>Durum</th>
+                <th>İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let user of filteredUsers">
+                <td>{{ user.first_name }} {{ user.last_name }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.phone_number || '-' }}</td>
+                <td>
+                  <span class="badge" *ngFor="let role of user.roles">
+                    {{ role.role_id.role_name }}
+                  </span>
+                </td>
+                <td>
+                  <span class="status" [class.active]="user.is_active">
+                    {{ user.is_active ? 'Aktif' : 'Pasif' }}
+                  </span>
+                </td>
+                <td class="actions">
+                  <button class="btn-icon edit" (click)="editUser(user)">✏️</button>
+                  <button class="btn-icon delete" (click)="deleteUser(user)">🗑️</button>
+                </td>
+              </tr>
+              <tr *ngIf="filteredUsers.length === 0">
+                <td colspan="6" class="empty-message">Hiç kullanıcı bulunamadı.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      
+        <!-- Kullanıcı Ekleme/Düzenleme Modal -->
+        <div class="modal" *ngIf="showUserModal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h2>{{ isEditMode ? 'Kullanıcı Düzenle' : 'Yeni Kullanıcı Ekle' }}</h2>
+              <button class="close-btn" (click)="closeUserModal()">×</button>
+            </div>
+            <div class="modal-body">
+              <form (ngSubmit)="saveUser()">
+                <div class="form-group">
+                  <label for="firstName">Ad</label>
+                  <input type="text" id="firstName" [(ngModel)]="currentUser.first_name" name="firstName" required>
+                </div>
+                <div class="form-group">
+                  <label for="lastName">Soyad</label>
+                  <input type="text" id="lastName" [(ngModel)]="currentUser.last_name" name="lastName" required>
+                </div>
+                <div class="form-group">
+                  <label for="email">E-posta</label>
+                  <input type="email" id="email" [(ngModel)]="currentUser.email" name="email" required>
+                </div>
+                <div class="form-group">
+                  <label for="phone">Telefon</label>
+                  <input type="text" id="phone" [(ngModel)]="currentUser.phone_number" name="phone">
+                </div>
+                <div class="form-group" *ngIf="!isEditMode">
+                  <label for="password">Şifre</label>
+                  <input type="password" id="password" [(ngModel)]="currentUser.password" name="password" required>
+                </div>
+                <div class="form-group" *ngIf="isEditMode">
+                  <label for="newPassword">Yeni Şifre (Boş bırakılabilir)</label>
+                  <input type="password" id="newPassword" [(ngModel)]="currentUser.password" name="newPassword">
+                </div>
+                <div class="form-group">
+                  <label for="roles">Roller</label>
+                  <div class="checkbox-group">
+                    <div *ngFor="let role of availableRoles" class="checkbox-item">
+                      <input 
+                        type="checkbox" 
+                        [id]="'role_' + role._id" 
+                        [checked]="isRoleSelected(role._id)"
+                        (change)="toggleRole(role._id)">
+                      <label [for]="'role_' + role._id">{{ role.role_name }}</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="isActive">Durum</label>
+                  <select id="isActive" [(ngModel)]="currentUser.is_active" name="isActive">
+                    <option [ngValue]="true">Aktif</option>
+                    <option [ngValue]="false">Pasif</option>
+                  </select>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" (click)="closeUserModal()">İptal</button>
+                  <button type="submit" class="btn primary">Kaydet</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Silme Onay Modalı -->
+        <div class="modal" *ngIf="showDeleteModal">
+          <div class="modal-content delete-modal">
+            <div class="modal-header">
+              <h2>Kullanıcı Silme</h2>
+              <button class="close-btn" (click)="closeDeleteModal()">×</button>
+            </div>
+            <div class="modal-body">
+              <p>{{ userToDelete?.first_name }} {{ userToDelete?.last_name }} adlı kullanıcıyı silmek istediğinize emin misiniz?</p>
+              <div class="form-actions">
+                <button type="button" class="btn secondary" (click)="closeDeleteModal()">İptal</button>
+                <button type="button" class="btn danger" (click)="confirmDeleteUser()">Sil</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
