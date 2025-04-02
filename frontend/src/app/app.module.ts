@@ -10,7 +10,7 @@ import { DashboardComponent } from './admin/dashboard/dashboard.component';
 
 @NgModule({
   declarations: [
-    AppComponent // Sadece AppComponent burada kalmalı
+    AppComponent,
   ],
   imports: [
     BrowserModule,

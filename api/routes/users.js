@@ -16,7 +16,7 @@ const i18n = new (require("../lib/i18n"))(config.DEFAULT_LANG);
 const { rateLimit } = require("express-rate-limit");
 const RateLimitMongo = require("rate-limit-mongo");
 
-const limiter = rateLimit({
+/*const limiter = rateLimit({
   store: new RateLimitMongo({
     uri: config.CONNECTION_STRING,
     collectionName: "rateLimits",
@@ -26,31 +26,24 @@ const limiter = rateLimit({
   limit: 5, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
   // standardHeaders: 'draft-7', // draft-6: `RateLimit-*` headers; draft-7: combined `RateLimit` header
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
-});
+});*/
 
 router.post("/register", async (req, res) => {
-
   let body = req.body;
-
   try {
-    let user = await Users.findOne({});
-
-    if (user) {
-      return res.sendStatus(Enum.HTTP_CODES.NOT_FOUND);
-    }
-
-    if (!body.email) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "email field must be filed");
-
+    if (!body.email) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "email field must be filled");
     if (is.not.email(body.email)) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "email field must be an email format");
-
-    if (!body.password) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "password field must be filed");
-
+    if (!body.password) throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "password field must be filled");
     if (body.password.length < Enum.PASS_LENGTH) {
       throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "password length must be greater than " + Enum.PASS_LENGTH);
     }
 
-    let password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(8), null);
+    let existingUser = await Users.findOne({ email: body.email });
+    if (existingUser) {
+      throw new CustomError(Enum.HTTP_CODES.CONFLICT, "Already Exists!", "User already exists");
+    }
 
+    let password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(8), null);
     let createdUser = await Users.create({
       email: body.email,
       password,
@@ -60,11 +53,15 @@ router.post("/register", async (req, res) => {
       phone_number: body.phone_number
     });
 
-    let role = await Roles.create({
-      role_name: Enum.SUPER_ADMIN,
-      is_active: true,
-      created_by: createdUser._id
-    });
+    // SUPER_ADMIN rolü olup olmadığını kontrol et, yoksa ekle
+    let role = await Roles.findOne({ role_name: Enum.SUPER_ADMIN });
+    if (!role) {
+      role = await Roles.create({
+        role_name: Enum.SUPER_ADMIN,
+        is_active: true,
+        created_by: createdUser._id
+      });
+    }
 
     await UserRoles.create({
       role_id: role._id,
@@ -72,14 +69,14 @@ router.post("/register", async (req, res) => {
     });
 
     res.status(Enum.HTTP_CODES.CREATED).json(Response.successResponse({ success: true }, Enum.HTTP_CODES.CREATED));
-
   } catch (err) {
     let errorResponse = Response.errorResponse(err);
     res.status(errorResponse.code).json(errorResponse);
   }
-})
+});
 
-router.post("/auth", limiter, async (req, res) => {
+
+router.post("/auth", async (req, res) => {
   try {
 
     let { email, password } = req.body;
@@ -114,7 +111,7 @@ router.post("/auth", limiter, async (req, res) => {
 })
 
 
-router.post("/add"/*, auth.checkRoles("user_add")*/, async (req, res) => {
+router.post("/add", auth.checkRoles("user_add"), async (req, res) => {
   let body = req.body;
   try {
 
@@ -128,7 +125,7 @@ router.post("/add"/*, auth.checkRoles("user_add")*/, async (req, res) => {
     if (body.password.length < Enum.PASS_LENGTH) {
       throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", config.DEFAULT_LANG), i18n.translate("USERS.PASSWORD_LENGTH_ERROR", config.DEFAULT_LANG, [Enum.PASS_LENGTH]));
     }
-    /*
+    
     if (!body.roles || !Array.isArray(body.roles) || body.roles.length == 0) {
       throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, i18n.translate("COMMON.VALIDATION_ERROR_TITLE", config.DEFAULT_LANG), i18n.translate("COMMON.FIELD_MUST_BE_TYPE", config.DEFAULT_LANG, ["roles", "Array"]));
     }
@@ -138,7 +135,7 @@ router.post("/add"/*, auth.checkRoles("user_add")*/, async (req, res) => {
     if (roles.length == 0) {
       throw new CustomError(Enum.HTTP_CODES.BAD_REQUEST, "Validation Error!", "roles not found");
     }
-    */
+    
 
     let password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(8), null);
 
@@ -150,14 +147,14 @@ router.post("/add"/*, auth.checkRoles("user_add")*/, async (req, res) => {
       last_name: body.last_name,
       phone_number: body.phone_number
     })
-    /*
+    
     for (let i = 0; i < roles.length; i++) {
       await UserRoles.create({
         role_id: roles[i]._id,
         user_id: user._id
       });
     }
-    */
+    
     res.status(Enum.HTTP_CODES.CREATED).json(Response.successResponse({ success: true }, Enum.HTTP_CODES.CREATED));
 
   } catch (err) {
