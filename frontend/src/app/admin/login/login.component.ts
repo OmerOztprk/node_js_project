@@ -1,12 +1,12 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { FormsModule } from '@angular/forms'; // FormsModule'ü ekleyin
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule], // FormsModule'ü imports dizisine ekleyin
+  imports: [FormsModule],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
