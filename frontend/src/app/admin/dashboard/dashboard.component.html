@@ -33,6 +33,10 @@
           <span class="icon">📊</span>
           <span class="label">Log Kayıtları</span>
         </li>
+        <li [class.active]="currentSection === 'statistics'" (click)="navigateTo('statistics')">
+            <span class="icon">📈</span>
+            <span class="label">İstatistikler</span>
+        </li>
         <li class="logout" (click)="logout()">
           <span class="icon">🚪</span>
           <span class="label">Çıkış Yap</span>
@@ -257,6 +261,16 @@
           <div class="placeholder-icon">📊</div>
           <h3>Log Kayıtları</h3>
           <p>Bu bölüm henüz uygulanmadı.</p>
+        </div>
+      </div>
+
+      <div *ngIf="currentSection === 'statistics'" class="section-content">
+        <div class="stats-header">
+          <h2>Sistem İstatistikleri</h2>
+          <p>Sistemdeki kullanıcı ve işlem verilerinin grafik gösterimi</p>
+        </div>
+        <div class="stats-container">
+          <app-charts></app-charts>
         </div>
       </div>
     </div>

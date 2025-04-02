@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
+import { ChartsComponent } from './charts/charts.component';
 
 interface AuditLog {
   _id: string;
@@ -33,7 +34,7 @@ interface Role {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ChartsComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
@@ -82,6 +83,12 @@ export class DashboardComponent implements OnInit {
     // Eğer users bölümüne geçildiyse kullanıcıları yükle
     if (section === 'users') {
       this.loadUsers();
+    }
+    
+    // İstatistikler bölümüne geçildiğinde grafikleri güncelle
+    if (section === 'statistics') {
+      // İstatistikleri yüklemek için ek işlemler gerekirse burada yapabiliriz
+      // Örneğin: this.loadStatisticsData();
     }
   }
 
@@ -217,6 +224,7 @@ export class DashboardComponent implements OnInit {
       case 'roles': return 'Rol Yönetimi';
       case 'categories': return 'Kategori Yönetimi';
       case 'logs': return 'Log Kayıtları';
+      case 'statistics': return 'İstatistikler';
       default: return 'Kontrol Paneli';
     }
   }

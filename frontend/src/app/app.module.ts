@@ -8,6 +8,7 @@ import { LoginComponent } from './admin/login/login.component';
 import { RegisterComponent } from './admin/register/register.component';
 import { DashboardComponent } from './admin/dashboard/dashboard.component';
 import { AuthInterceptor } from './interceptors/auth.interceptor';
+import { ChartsComponent } from './admin/dashboard/charts/charts.component';
 
 @NgModule({
   declarations: [
@@ -19,7 +20,8 @@ import { AuthInterceptor } from './interceptors/auth.interceptor';
     HttpClientModule,
     LoginComponent, // Standalone bileşenler imports dizisine eklenir
     RegisterComponent,
-    DashboardComponent
+    DashboardComponent,
+    ChartsComponent
   ],
   providers: [
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true }
