@@ -83,7 +83,7 @@
           <h3>Son Aktiviteler</h3>
           <div class="activity-list">
             <div *ngFor="let log of recentLogs" class="activity-item">
-              <div class="activity-icon" [ngClass]="log.level.toLowerCase()">
+              <div class="activity-icon" [ngClass]="log.level?.toLowerCase()">
                 {{ getActivityIcon(log.level) }}
               </div>
               <div class="activity-details">
@@ -133,6 +133,7 @@
                   <span class="badge" *ngFor="let role of user.roles">
                     {{ role.role_id.role_name }}
                   </span>
+                  <span *ngIf="!user.roles || user.roles.length === 0">-</span>
                 </td>
                 <td>
                   <span class="status" [class.active]="user.is_active">
@@ -140,8 +141,8 @@
                   </span>
                 </td>
                 <td class="actions">
-                  <button class="btn-icon edit" (click)="editUser(user)">✏️</button>
-                  <button class="btn-icon delete" (click)="deleteUser(user)">🗑️</button>
+                  <button class="btn-icon edit" (click)="editUser(user)" title="Düzenle">✏️</button>
+                  <button class="btn-icon delete" (click)="deleteUser(user)" title="Sil">🗑️</button>
                 </td>
               </tr>
               <tr *ngIf="filteredUsers.length === 0">
@@ -195,6 +196,9 @@
                         (change)="toggleRole(role._id)">
                       <label [for]="'role_' + role._id">{{ role.role_name }}</label>
                     </div>
+                    <div *ngIf="availableRoles.length === 0" class="empty-message">
+                      Rol bulunamadı. Lütfen önce rol ekleyin.
+                    </div>
                   </div>
                 </div>
                 <div class="form-group">
@@ -228,6 +232,31 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+  
+      <!-- Diğer bölümler için yer tutucular -->
+      <div *ngIf="currentSection === 'roles'" class="section-content">
+        <div class="placeholder-content">
+          <div class="placeholder-icon">🔑</div>
+          <h3>Rol Yönetimi</h3>
+          <p>Bu bölüm henüz uygulanmadı.</p>
+        </div>
+      </div>
+  
+      <div *ngIf="currentSection === 'categories'" class="section-content">
+        <div class="placeholder-content">
+          <div class="placeholder-icon">📁</div>
+          <h3>Kategori Yönetimi</h3>
+          <p>Bu bölüm henüz uygulanmadı.</p>
+        </div>
+      </div>
+  
+      <div *ngIf="currentSection === 'logs'" class="section-content">
+        <div class="placeholder-content">
+          <div class="placeholder-icon">📊</div>
+          <h3>Log Kayıtları</h3>
+          <p>Bu bölüm henüz uygulanmadı.</p>
         </div>
       </div>
     </div>

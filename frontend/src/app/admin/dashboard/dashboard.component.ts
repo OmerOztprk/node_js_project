@@ -87,51 +87,77 @@ export class DashboardComponent implements OnInit {
 
   // Dashboard istatistiklerini yükle
   loadStats(): void {
-    // Kullanıcı sayısı
-    this.http.post<any>('http://localhost:3000/api/stats/users/count', {})
+    // Kullanıcı sayısı - API'yi alternatif yolla çağırma
+    this.http.get<any>('http://localhost:3000/api/users')
       .subscribe({
         next: (response) => {
-          console.log('Kullanıcı istatistikleri:', response);
-          this.stats.users = response.data || 0;
+          if (response && Array.isArray(response.data)) {
+            this.stats.users = response.data.length;
+          } else {
+            this.stats.users = 0;
+          }
+          console.log('Kullanıcı istatistikleri:', this.stats.users);
         },
         error: (error) => {
           console.error('Kullanıcı istatistikleri yüklenirken hata oluştu:', error);
+          this.stats.users = 0;
         }
       });
     
-    // Kategori sayısı - uniqueCount yerine count
-    this.http.post<any>('http://localhost:3000/api/stats/categories/count', {})
+    // Kategori sayısı - API'yi alternatif yolla çağırma
+    this.http.get<any>('http://localhost:3000/api/categories')
       .subscribe({
         next: (response) => {
-          console.log('Kategori istatistikleri:', response);
-          this.stats.categories = response.data || 0;
+          if (response && Array.isArray(response.data)) {
+            this.stats.categories = response.data.length;
+          } else {
+            this.stats.categories = 0;
+          }
+          console.log('Kategori istatistikleri:', this.stats.categories);
         },
         error: (error) => {
           console.error('Kategori istatistikleri yüklenirken hata oluştu:', error);
+          this.stats.categories = 0;
         }
       });
     
-    // Rol sayısı
-    this.http.post<any>('http://localhost:3000/api/stats/roles/count', {})
+    // Rol sayısı - API'yi alternatif yolla çağırma
+    this.http.get<any>('http://localhost:3000/api/roles')
       .subscribe({
         next: (response) => {
-          console.log('Rol istatistikleri:', response);
-          this.stats.roles = response.data || 0;
+          if (response && Array.isArray(response.data)) {
+            this.stats.roles = response.data.length;
+          } else {
+            this.stats.roles = 0;
+          }
+          console.log('Rol istatistikleri:', this.stats.roles);
         },
         error: (error) => {
           console.error('Rol istatistikleri yüklenirken hata oluştu:', error);
+          this.stats.roles = 0;
         }
       });
   
-    // Log sayısı
-    this.http.post<any>('http://localhost:3000/api/stats/auditlogs/count', {})
+    // Log sayısı - Tüm logları çekerek sayısını al
+    this.http.post<any>('http://localhost:3000/api/auditlogs', {
+      begin_date: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
+      end_date: new Date().toISOString(),
+      limit: 1000
+    })
       .subscribe({
         next: (response) => {
-          console.log('Log istatistikleri:', response);
-          this.stats.logs = response.data || 0;
+          if (response && response.total) {
+            this.stats.logs = response.total;
+          } else if (response && Array.isArray(response.data)) {
+            this.stats.logs = response.data.length;
+          } else {
+            this.stats.logs = 0;
+          }
+          console.log('Log istatistikleri:', this.stats.logs);
         },
         error: (error) => {
           console.error('Log istatistikleri yüklenirken hata oluştu:', error);
+          this.stats.logs = 0;
         }
       });
   }
@@ -159,7 +185,7 @@ export class DashboardComponent implements OnInit {
 
   // Log seviyesine göre simge getir
   getActivityIcon(level: string): string {
-    switch (level.toLowerCase()) {
+    switch (level?.toLowerCase()) {
       case 'info': return '📝';
       case 'warn': return '⚠️';
       case 'error': return '❌';
@@ -180,7 +206,7 @@ export class DashboardComponent implements OnInit {
       initials += this.userData.last_name.charAt(0);
     }
     
-    return initials.toUpperCase() || this.userData.email.charAt(0).toUpperCase();
+    return initials.toUpperCase() || (this.userData.email ? this.userData.email.charAt(0).toUpperCase() : '');
   }
 
   // Bölüm başlığını getir
@@ -341,6 +367,7 @@ export class DashboardComponent implements OnInit {
             console.log('Kullanıcı eklendi:', response);
             this.closeUserModal();
             this.loadUsers();
+            this.loadStats(); // İstatistikleri yenile
           },
           error: (error) => {
             console.error('Kullanıcı eklenirken hata oluştu:', error);
@@ -361,6 +388,7 @@ export class DashboardComponent implements OnInit {
           console.log('Kullanıcı silindi:', response);
           this.closeDeleteModal();
           this.loadUsers();
+          this.loadStats(); // İstatistikleri yenile
         },
         error: (error) => {
           console.error('Kullanıcı silinirken hata oluştu:', error);
@@ -370,6 +398,8 @@ export class DashboardComponent implements OnInit {
   }
 
   formatDate(dateString: string): string {
+    if (!dateString) return '';
+    
     const date = new Date(dateString);
     return date.toLocaleString('tr-TR', {
       day: '2-digit',
