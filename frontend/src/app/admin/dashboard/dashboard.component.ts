@@ -102,8 +102,22 @@ export class DashboardComponent implements OnInit {
     this.http.get<any>('http://localhost:3000/api/users')
       .subscribe({
         next: (response) => {
-          if (response && Array.isArray(response.data)) {
-            this.stats.users = response.data.length;
+          if (response && response.data) {
+            // Yeni API formatı: data içinde data ve pagination var
+            if (response.data.pagination && typeof response.data.pagination.total === 'number') {
+              // Pagination meta bilgisinden toplam kullanıcı sayısını al
+              this.stats.users = response.data.pagination.total;
+            }
+            // Alternatif olarak array uzunluğuna bak
+            else if (response.data.data && Array.isArray(response.data.data)) {
+              this.stats.users = response.data.data.length;
+            }
+            // Eski API formatı: data direkt array 
+            else if (Array.isArray(response.data)) {
+              this.stats.users = response.data.length;
+            } else {
+              this.stats.users = 0;
+            }
           } else {
             this.stats.users = 0;
           }
