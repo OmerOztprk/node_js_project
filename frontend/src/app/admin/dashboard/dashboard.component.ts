@@ -49,13 +49,17 @@ export class DashboardComponent implements OnInit {
     logs: 0
   };
   recentLogs: AuditLog[] = [];
+  currentPage: number = 1;
+  pageSize: number = 10;
+  totalUsers: number = 0;
+  totalPages: number = 0;
 
   // Kullanıcı yönetimi için yeni değişkenler
   users: User[] = [];
   filteredUsers: User[] = [];
   userSearchTerm: string = '';
   availableRoles: Role[] = [];
-  
+
   // Modal durumları için değişkenler
   showUserModal: boolean = false;
   showDeleteModal: boolean = false;
@@ -79,12 +83,12 @@ export class DashboardComponent implements OnInit {
 
   navigateTo(section: string): void {
     this.currentSection = section;
-    
+
     // Eğer users bölümüne geçildiyse kullanıcıları yükle
     if (section === 'users') {
       this.loadUsers();
     }
-    
+
     // İstatistikler bölümüne geçildiğinde grafikleri güncelle
     if (section === 'statistics') {
       // İstatistikleri yüklemek için ek işlemler gerekirse burada yapabiliriz
@@ -110,7 +114,7 @@ export class DashboardComponent implements OnInit {
           this.stats.users = 0;
         }
       });
-    
+
     // Kategori sayısı - API'yi alternatif yolla çağırma
     this.http.get<any>('http://localhost:3000/api/categories')
       .subscribe({
@@ -127,7 +131,7 @@ export class DashboardComponent implements OnInit {
           this.stats.categories = 0;
         }
       });
-    
+
     // Rol sayısı - API'yi alternatif yolla çağırma
     this.http.get<any>('http://localhost:3000/api/roles')
       .subscribe({
@@ -144,7 +148,7 @@ export class DashboardComponent implements OnInit {
           this.stats.roles = 0;
         }
       });
-  
+
     // Log sayısı - Tüm logları çekerek sayısını al
     this.http.post<any>('http://localhost:3000/api/auditlogs', {
       begin_date: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
@@ -174,7 +178,7 @@ export class DashboardComponent implements OnInit {
     const today = new Date();
     const lastWeek = new Date();
     lastWeek.setDate(today.getDate() - 7);
-    
+
     this.http.post<any>('http://localhost:3000/api/auditlogs', {
       begin_date: lastWeek.toISOString(),
       end_date: today.toISOString(),
@@ -204,7 +208,7 @@ export class DashboardComponent implements OnInit {
   // Kullanıcı adının baş harflerini al
   getUserInitials(): string {
     if (!this.userData) return '';
-    
+
     let initials = '';
     if (this.userData.first_name) {
       initials += this.userData.first_name.charAt(0);
@@ -212,7 +216,7 @@ export class DashboardComponent implements OnInit {
     if (this.userData.last_name) {
       initials += this.userData.last_name.charAt(0);
     }
-    
+
     return initials.toUpperCase() || (this.userData.email ? this.userData.email.charAt(0).toUpperCase() : '');
   }
 
@@ -237,16 +241,80 @@ export class DashboardComponent implements OnInit {
 
   // Kullanıcı yönetimi metodları
   loadUsers(): void {
-    this.http.get<any>('http://localhost:3000/api/users')
+    this.http.get<any>(`http://localhost:3000/api/users?page=${this.currentPage}&limit=${this.pageSize}`)
       .subscribe({
         next: (response) => {
           if (response && response.data) {
-            this.users = response.data;
-            this.filteredUsers = [...this.users];
+            if (response.data.data) {
+              // Yeni API formatına uygun olarak verileri al
+              this.users = response.data.data;
+              this.filteredUsers = [...this.users];
+
+              // Sayfalama meta bilgilerini set et
+              if (response.data.pagination) {
+                this.totalUsers = response.data.pagination.total;
+                this.totalPages = response.data.pagination.pages;
+              }
+            } else {
+              // Eski API formatı için geriye dönük uyumluluk
+              this.users = response.data;
+              this.filteredUsers = [...this.users];
+            }
           }
         },
         error: (error) => console.error('Kullanıcılar yüklenirken hata oluştu:', error)
       });
+  }
+  // Sayfalama işlemleri için yeni metodlar
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
+      this.currentPage = page;
+      this.loadUsers();
+    }
+  }
+
+  previousPage(): void {
+    this.goToPage(this.currentPage - 1);
+  }
+
+  nextPage(): void {
+    this.goToPage(this.currentPage + 1);
+  }
+  getPageNumberToShow(index: number): number {
+    // Başlangıç sayfa numarasını belirle
+    let startPage = Math.max(1, this.currentPage - 2);
+
+    // Son sayfaya yaklaşırken düzeltme yap
+    if (this.totalPages > 5 && this.currentPage > this.totalPages - 2) {
+      startPage = this.totalPages - 4;
+    }
+
+    return startPage + index;
+  }
+  // Component sınıfına ekleyin
+  Math = Math; // HTML'de Math fonksiyonlarını kullanabilmek için
+
+  // Pagination için sayfa numaralarını oluşturan metod
+  getPaginationArray(): number[] {
+    const pages: number[] = [];
+    const maxVisiblePages = 5;
+
+    // Gösterilecek sayfa numaralarının başlangıç ve bitiş değerlerini hesapla
+    let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = startPage + maxVisiblePages - 1;
+
+    // Bitiş sayfası toplam sayfa sayısını aşıyorsa düzelt
+    if (endPage > this.totalPages) {
+      endPage = this.totalPages;
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    // Sayfa numaralarını oluştur
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    return pages;
   }
 
   loadAllRoles(): void {
@@ -261,14 +329,15 @@ export class DashboardComponent implements OnInit {
       });
   }
 
+  // Arama fonksiyonunu da güncellememiz gerekiyor
   filterUsers(): void {
     if (!this.userSearchTerm) {
       this.filteredUsers = [...this.users];
       return;
     }
-    
+
     const term = this.userSearchTerm.toLowerCase();
-    this.filteredUsers = this.users.filter(user => 
+    this.filteredUsers = this.users.filter(user =>
       user.email.toLowerCase().includes(term) ||
       (user.first_name && user.first_name.toLowerCase().includes(term)) ||
       (user.last_name && user.last_name.toLowerCase().includes(term))
@@ -285,7 +354,7 @@ export class DashboardComponent implements OnInit {
   editUser(user: User): void {
     this.isEditMode = true;
     // Kullanıcı verisinin derin bir kopyasını oluştur
-    this.currentUser = { 
+    this.currentUser = {
       _id: user._id,
       email: user.email,
       first_name: user.first_name || '',
@@ -293,11 +362,11 @@ export class DashboardComponent implements OnInit {
       phone_number: user.phone_number || '',
       is_active: user.is_active
     };
-    
+
     // Kullanıcının rollerini seç
     this.selectedRoles = user.roles ? user.roles.map(r => r.role_id._id.toString()) : [];
     this.showUserModal = true;
-    
+
     console.log('Düzenlenecek kullanıcı:', this.currentUser);
     console.log('Seçilen roller:', this.selectedRoles);
   }
@@ -347,31 +416,31 @@ export class DashboardComponent implements OnInit {
       alert('E-posta adresi zorunludur');
       return;
     }
-    
+
     if (!this.isEditMode && (!this.currentUser.password || this.currentUser.password.length < 8)) {
       alert('Şifre en az 8 karakter olmalıdır');
       return;
     }
-    
+
     if (!this.selectedRoles || this.selectedRoles.length === 0) {
       alert('Lütfen en az bir rol seçin');
       return;
     }
-    
+
     // Rol listesini kontrol et - güvenli bir diziye kopyala
     const validRoles = this.selectedRoles.filter(role => role && typeof role === 'string' && role.length > 0);
-    
+
     if (validRoles.length === 0) {
       alert('Geçerli roller seçilmelidir');
       return;
     }
-    
+
     // Kullanıcı verilerini hazırla
     const userData = {
       ...this.currentUser,
       roles: validRoles // Temizlenmiş rol dizisi
     };
-    
+
     console.log('Gönderilecek kullanıcı verisi:', userData);
 
     // API çağrısı yap
@@ -386,10 +455,10 @@ export class DashboardComponent implements OnInit {
           },
           error: (error) => {
             console.error('Kullanıcı güncellenirken hata oluştu:', error);
-            
+
             // Hata mesajını anlamlı hale getir
             let errorMessage = 'Bilinmeyen hata';
-            
+
             if (error.error?.message) {
               errorMessage = error.error.message;
             } else if (typeof error.error === 'string') {
@@ -398,7 +467,7 @@ export class DashboardComponent implements OnInit {
               tempDiv.innerHTML = error.error;
               errorMessage = tempDiv.textContent || tempDiv.innerText || error.error;
             }
-            
+
             alert('Kullanıcı güncellenirken bir hata oluştu: ' + errorMessage);
           }
         });
@@ -410,14 +479,14 @@ export class DashboardComponent implements OnInit {
             console.log('Kullanıcı eklendi:', response);
             this.closeUserModal();
             this.loadUsers();
-            this.loadStats(); 
+            this.loadStats();
           },
           error: (error) => {
             console.error('Kullanıcı eklenirken hata oluştu:', error);
-            
+
             // Hata mesajını anlamlı hale getir
             let errorMessage = 'Bilinmeyen hata';
-            
+
             if (error.error?.message) {
               errorMessage = error.error.message;
             } else if (typeof error.error === 'string') {
@@ -426,7 +495,7 @@ export class DashboardComponent implements OnInit {
               tempDiv.innerHTML = error.error;
               errorMessage = tempDiv.textContent || tempDiv.innerText || error.error;
             }
-            
+
             alert('Kullanıcı eklenirken bir hata oluştu: ' + errorMessage);
           }
         });
@@ -453,7 +522,7 @@ export class DashboardComponent implements OnInit {
 
   formatDate(dateString: string): string {
     if (!dateString) return '';
-    
+
     const date = new Date(dateString);
     return date.toLocaleString('tr-TR', {
       day: '2-digit',

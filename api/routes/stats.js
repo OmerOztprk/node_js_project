@@ -80,4 +80,63 @@ router.post("/users/count", async (req, res) => {
     }
 });
 
+// /api/stats/users/monthly - Aylık kullanıcı kayıtları istatistiği
+router.post("/users/monthly", async (req, res) => {
+    try {
+        let body = req.body;
+        let matchQuery = {};
+        
+        // Tarih aralığı filtresi oluştur
+        if (body.begin_date && body.end_date) {
+            matchQuery.created_at = {
+                $gte: new Date(body.begin_date),
+                $lte: new Date(body.end_date)
+            };
+        } else {
+            // Varsayılan olarak son 6 ay
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - 5);
+            
+            matchQuery.created_at = {
+                $gte: startDate,
+                $lte: endDate
+            };
+        }
+
+        // Aylık kayıt istatistiklerini çek
+        const monthlyStats = await Users.aggregate([
+            { $match: matchQuery },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: "$created_at" },
+                        month: { $month: "$created_at" }
+                    },
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    month: {
+                        $dateFromParts: {
+                            year: "$_id.year",
+                            month: "$_id.month",
+                            day: 1
+                        }
+                    },
+                    count: 1
+                }
+            },
+            { $sort: { month: 1 } }
+        ]);
+
+        res.json(Response.successResponse({ data: monthlyStats }));
+    } catch (err) {
+        let errorResponse = Response.errorResponse(err, req.user?.language);
+        res.status(errorResponse.code).json(errorResponse);
+    }
+});
+
 module.exports = router;

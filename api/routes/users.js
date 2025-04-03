@@ -196,16 +196,39 @@ router.post("/add", auth.checkRoles("user_add"), async (req, res) => {
 });
 
 /* GET users listing. */
+// Mevcut GET route'unu güncelle veya yeni bir route ekle
 router.get('/', auth.checkRoles("user_view"), async (req, res) => {
   try {
-    let users = await Users.find({}, { password: 0 }).lean();
+    // Sayfalama parametrelerini al
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
+    // Toplam kullanıcı sayısını al
+    const totalUsers = await Users.countDocuments({});
+    
+    // Sayfalama ile kullanıcıları getir
+    let users = await Users.find({}, { password: 0 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    // Kullanıcı rollerini getir (mevcut koddan)
     for (let i = 0; i < users.length; i++) {
       let roles = await UserRoles.find({ user_id: users[i]._id }).populate("role_id");
       users[i].roles = roles;
     }
 
-    res.json(Response.successResponse(users));
+    // Sayfalama bilgileriyle birlikte yanıt ver
+    res.json(Response.successResponse({
+      data: users,
+      pagination: {
+        total: totalUsers,
+        page: page,
+        limit: limit,
+        pages: Math.ceil(totalUsers / limit)
+      }
+    }));
   } catch (err) {
     let errorResponse = Response.errorResponse(err);
     res.status(errorResponse.code).json(errorResponse);

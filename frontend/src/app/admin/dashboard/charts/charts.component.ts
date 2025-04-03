@@ -35,12 +35,12 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   private rolesChart: Chart | null = null;
   private operationsChart: Chart | null = null;
   private statusChart: Chart | null = null;
-  
+
   private monthlyData: MonthlyStats[] = [];
   private roleData: RoleStats[] = [];
   private operationData: OperationStats[] = [];
   private statusData: StatusStats[] = [];
-  
+
   constructor(private http: HttpClient) {
     Chart.register(...registerables);
   }
@@ -75,7 +75,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 5);
-    
+
     this.http.post<any>('http://localhost:3000/api/stats/users/monthly', {
       begin_date: startDate.toISOString(),
       end_date: endDate.toISOString()
@@ -84,11 +84,14 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         if (response && response.data) {
           this.monthlyData = this.processMonthlyData(response.data);
           this.createUsersChart();
+        } else {
+          this.monthlyData = this.createEmptyMonthlyData();
+          this.createUsersChart();
         }
       },
       error: (error) => {
         console.error('Aylık istatistikler yüklenirken hata oluştu:', error);
-        this.monthlyData = this.createDummyMonthlyData();
+        this.monthlyData = this.createEmptyMonthlyData();
         this.createUsersChart();
       }
     });
@@ -100,11 +103,21 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       next: (rolesResponse) => {
         if (rolesResponse && rolesResponse.data) {
           const roles = rolesResponse.data;
-          
+
           this.http.get<any>('http://localhost:3000/api/users').subscribe({
             next: (usersResponse) => {
+              // API yanıt yapısını kontrol et ve doğru şekilde çıkar
+              let users = [];
               if (usersResponse && usersResponse.data) {
-                const users = usersResponse.data;
+                // Yeni API yapısı: data içinde data ve pagination var
+                if (usersResponse.data.data && Array.isArray(usersResponse.data.data)) {
+                  users = usersResponse.data.data;
+                }
+                // Eski API yapısı: data direkt array
+                else if (Array.isArray(usersResponse.data)) {
+                  users = usersResponse.data;
+                }
+
                 this.roleData = this.processRoleData(roles, users);
                 this.createRolesChart();
               }
@@ -149,8 +162,19 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   loadStatusStats(): void {
     this.http.get<any>('http://localhost:3000/api/users').subscribe({
       next: (response) => {
+        // API yanıt yapısını kontrol et ve doğru şekilde çıkar
+        let users = [];
         if (response && response.data) {
-          this.statusData = this.processStatusData(response.data);
+          // Yeni API yapısı: data içinde data ve pagination var
+          if (response.data.data && Array.isArray(response.data.data)) {
+            users = response.data.data;
+          }
+          // Eski API yapısı: data direkt array
+          else if (Array.isArray(response.data)) {
+            users = response.data;
+          }
+
+          this.statusData = this.processStatusData(users);
           this.createStatusChart();
         }
       },
@@ -162,29 +186,64 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     });
   }
 
-  // Veri işleme fonksiyonları
-  processMonthlyData(data: any[]): MonthlyStats[] {
-    const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
-                 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-                 
-    if (!data || data.length === 0) {
-      return this.createDummyMonthlyData();
+  processMonthlyData(data: any): MonthlyStats[] {
+    const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
+    // Veri kontrolü ve dönüştürme işlemi
+    if (!data) {
+      console.error('Veri boş geldi');
+      return this.createEmptyMonthlyData();
     }
-    
+
+    // API'nin yanıt formatını kontrol et (debug)
+    console.log('Gelen veri tipi:', typeof data);
+    console.log('Gelen veri:', data);
+
+    // Eğer data bir array değilse ve data.data varsa
+    if (!Array.isArray(data) && data.data && Array.isArray(data.data)) {
+      data = data.data; // İç içe gelen datayı çıkart
+    }
+
+    // Hala array değilse
+    if (!Array.isArray(data)) {
+      console.error('Veri bir dizi değil:', data);
+      return this.createEmptyMonthlyData();
+    }
+
+    if (data.length === 0) {
+      return this.createEmptyMonthlyData();
+    }
+
     return data.map(item => ({
       month: months[new Date(item.month).getMonth()],
       count: item.count
     }));
   }
+  // Boş veri oluşturucu
+  createEmptyMonthlyData(): MonthlyStats[] {
+    const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'];
+    return months.map(month => ({
+      month,
+      count: 0 // Rastgele değer yerine 0 kullanılıyor
+    }));
+  }
 
+  // processRoleData ve processStatusData fonksiyonlarında güvenlik kontrolleri ekleyelim
   processRoleData(roles: any[], users: any[]): RoleStats[] {
-    const roleCounts: {[key: string]: number} = {};
-    
+    // Gelen veriler dizi değilse dönüşü hemen yap
+    if (!Array.isArray(roles) || !Array.isArray(users)) {
+      console.error('Rol veya kullanıcı verileri dizi formatında değil:', { roles, users });
+      return this.createDummyRoleData();
+    }
+
+    const roleCounts: { [key: string]: number } = {};
+
     // Tüm rolleri başlat
     roles.forEach(role => {
       roleCounts[role.role_name] = 0;
     });
-    
+
     // Her kullanıcının rollerini say
     users.forEach(user => {
       if (user.roles && Array.isArray(user.roles)) {
@@ -194,7 +253,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         });
       }
     });
-    
+
     // İşlenmiş veriyi oluştur
     return Object.entries(roleCounts).map(([name, count]) => ({
       name, count
@@ -205,27 +264,33 @@ export class ChartsComponent implements OnInit, AfterViewInit {
     if (!logs || logs.length === 0) {
       return this.createDummyOperationData();
     }
-    
-    const operationCounts: {[key: string]: number} = {};
-    
+
+    const operationCounts: { [key: string]: number } = {};
+
     logs.forEach(log => {
       const type = log.proc_type || 'Diğer';
       operationCounts[type] = (operationCounts[type] || 0) + 1;
     });
-    
+
     return Object.entries(operationCounts).map(([type, count]) => ({
       type, count
     }));
   }
 
   processStatusData(users: any[]): StatusStats[] {
-    if (!users || users.length === 0) {
+    // Gelen veri dizi değilse dönüşü hemen yap
+    if (!Array.isArray(users)) {
+      console.error('Kullanıcı verileri dizi formatında değil:', users);
       return this.createDummyStatusData();
     }
-    
+
+    if (users.length === 0) {
+      return this.createDummyStatusData();
+    }
+
     const activeCount = users.filter(user => user.is_active).length;
     const inactiveCount = users.length - activeCount;
-    
+
     return [
       { status: 'Aktif', count: activeCount },
       { status: 'Pasif', count: inactiveCount }
@@ -271,17 +336,17 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   createUsersChart(): void {
     const canvas = document.getElementById('usersChart') as HTMLCanvasElement;
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
+
     if (this.usersChart) {
       this.usersChart.destroy();
     }
-    
+
     const labels = this.monthlyData.map(item => item.month);
     const data = this.monthlyData.map(item => item.count);
-    
+
     this.usersChart = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -311,17 +376,17 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   createRolesChart(): void {
     const canvas = document.getElementById('rolesChart') as HTMLCanvasElement;
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
+
     if (this.rolesChart) {
       this.rolesChart.destroy();
     }
-    
+
     const labels = this.roleData.map(item => item.name);
     const data = this.roleData.map(item => item.count);
-    
+
     const backgroundColors = [
       'rgba(255, 99, 132, 0.7)',
       'rgba(54, 162, 235, 0.7)',
@@ -330,7 +395,7 @@ export class ChartsComponent implements OnInit, AfterViewInit {
       'rgba(153, 102, 255, 0.7)',
       'rgba(255, 159, 64, 0.7)'
     ];
-    
+
     this.rolesChart = new Chart(ctx, {
       type: 'pie',
       data: {
@@ -350,17 +415,17 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   createOperationsChart(): void {
     const canvas = document.getElementById('operationsChart') as HTMLCanvasElement;
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
+
     if (this.operationsChart) {
       this.operationsChart.destroy();
     }
-    
+
     const labels = this.operationData.map(item => item.type);
     const data = this.operationData.map(item => item.count);
-    
+
     this.operationsChart = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -390,17 +455,17 @@ export class ChartsComponent implements OnInit, AfterViewInit {
   createStatusChart(): void {
     const canvas = document.getElementById('statusChart') as HTMLCanvasElement;
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
+
     if (this.statusChart) {
       this.statusChart.destroy();
     }
-    
+
     const labels = this.statusData.map(item => item.status);
     const data = this.statusData.map(item => item.count);
-    
+
     this.statusChart = new Chart(ctx, {
       type: 'doughnut',
       data: {
@@ -415,7 +480,27 @@ export class ChartsComponent implements OnInit, AfterViewInit {
         }]
       },
       options: {
-        responsive: true
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 2,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 15,
+              padding: 10,
+              font: {
+                size: 12
+              }
+            }
+          }
+        },
+        layout: {
+          padding: {
+            top: 5,
+            bottom: 5
+          }
+        }
       }
     });
   }
